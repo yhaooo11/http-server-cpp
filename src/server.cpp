@@ -94,8 +94,18 @@ int main(int argc, char **argv) {
   std::string request(buff);
   // std::cout << "Received message from client: " << msg_str << "\n";
   std::string path = get_path(request);
-  std::cout << "Path: " << path << "\n";
-  std::string response = request.starts_with("GET / HTTP/1.1\r\n") ? "HTTP/1.1 200 OK\r\n\r\n" : "HTTP/1.1 404 Not Found\r\n\r\n" ;
+  // std::cout << "Path: " << path << "\n";
+  // std::string response = request.starts_with("GET / HTTP/1.1\r\n") ? "HTTP/1.1 200 OK\r\n\r\n" : "HTTP/1.1 404 Not Found\r\n\r\n" ;
+
+  std::vector<std::string> split_paths = split_string(path, "/");
+  std::string response;
+  if (path == "/") {
+    response = "HTTP/1.1 200 OK\r\n\r\n";
+  } else if (split_paths[1] == "echo") {
+    response = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: " + std::to_string(split_paths[2].length()) + "\r\n\r\n" + split_paths[2];
+  } else {
+    response = "HTTP/1.1 404 Not Found\r\n\r\n";
+  }
 
   // std::string message = "HTTP/1.1 200 OK\r\n\r\n";
   send(client_fd , response.c_str() , response.length(), 0);
