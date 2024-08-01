@@ -112,10 +112,9 @@ int handle_client(int client_fd, struct sockaddr_in client_addr, std::string dir
       std::string subStr = request.path.substr(6);
       response = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: " + std::to_string(subStr.length()) + "\r\n\r\n" + subStr;
     } else if (request.path.substr(0, 7) == "/files/") {
-      std::string directory = dir;
       std::string filename = request.path.substr(7);
-      std::ifstream file(directory + filename);
-      std::cout << directory + filename << "\n";
+      std::ifstream file(dir + filename);
+      std::cout << dir + filename << "\n";
       if (!file) {
         response = "HTTP/1.1 404 Not Found\r\nContent-Type: text/plain\r\nContent-Length: 0\r\n\r\n";
         send(client_fd , response.c_str() , response.length(), 0);
@@ -129,9 +128,19 @@ int handle_client(int client_fd, struct sockaddr_in client_addr, std::string dir
     } else {
       response = "HTTP/1.1 404 Not Found\r\n\r\n";
     }
+  } else if (request.method == "POST") {
+    if (request.path.substr(0, 7) == "/files/") {
+      std::string filename = request.path.substr(7);
+      std::cout << request.body << "\n";
+
+      std::ofstream outFile(dir + filename);
+      outFile << request.body;
+      outFile.close();
+
+      response = "HTTP/1.1 201 Created\r\n\r\n";
+    }
   } else {
-      // HTTPResponse response = { "HTTP/1.1 405 Method Not Allowed", "text/plain", {}, "Method Not Allowed" };
-      // write_response(client_fd, response);
+    response = "HTTP/1.1 405 Method Not Allowed\r\nContent-Type: text/plain\r\nContent-Length: 15\r\n\r\nMethod Not Allowed";
   }
 
   send(client_fd , response.c_str() , response.length(), 0);
