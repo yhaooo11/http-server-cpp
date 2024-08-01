@@ -9,6 +9,7 @@
 #include <netdb.h>
 #include <vector>
 #include <sstream>
+#include <map>
 
 
 std::vector<std::string> split_string(const std::string &str, const std::string &delimiter) {
@@ -27,6 +28,21 @@ std::string get_path(std::string request) {
   std::vector<std::string> toks = split_string(request, "\r\n");
   std::vector<std::string> path_toks = split_string(toks[0], " ");
   return path_toks[1];
+}
+
+std::map<std::string, std::string> get_headers(std::string request) {
+  std::map<std::string, std::string> headers;
+  std::vector<std::string> toks = split_string(request, "\r\n");
+  for (int i = 1; i < toks.size(); i++) {
+    std::cout << toks[i] << "\n";
+    // size_t pos = toks[i].find(":");
+    // if (pos == std::string::npos) {
+    //   break;
+    // }
+    // std::vector<std::string> header_toks = split_string(toks[i], ": ");
+    // headers[header_toks[0]] = header_toks[1];
+  }
+  return headers;
 }
 
 int main(int argc, char **argv) {
@@ -94,6 +110,8 @@ int main(int argc, char **argv) {
   std::string request(buff);
   // std::cout << "Received message from client: " << msg_str << "\n";
   std::string path = get_path(request);
+  std::map<std::string, std::string> headers = get_headers(request);
+  std::cout << headers["User-Agent"] << "\n";
   // std::cout << "Path: " << path << "\n";
   // std::string response = request.starts_with("GET / HTTP/1.1\r\n") ? "HTTP/1.1 200 OK\r\n\r\n" : "HTTP/1.1 404 Not Found\r\n\r\n" ;
 
@@ -103,6 +121,8 @@ int main(int argc, char **argv) {
     response = "HTTP/1.1 200 OK\r\n\r\n";
   } else if (split_paths[1] == "echo") {
     response = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: " + std::to_string(split_paths[2].length()) + "\r\n\r\n" + split_paths[2];
+  } else if (split_paths[1] == "user-agent") {
+    response = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: " + std::to_string(headers["User-Agent"].length()) + "\r\n\r\n" + headers["User-Agent"];
   } else {
     response = "HTTP/1.1 404 Not Found\r\n\r\n";
   }
