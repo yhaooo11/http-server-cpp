@@ -61,6 +61,12 @@
     "vector": "cpp",
     "algorithm": "cpp",
     "filesystem": "cpp",
-    "thread": "cpp"
+    "thread": "cpp",
+    "__tree": "cpp",
+    "deque": "cpp",
+    "fstream": "cpp",
+    "iomanip": "cpp",
+    "map": "cpp",
+    "stack": "cpp"
   }
 }
