@@ -7,6 +7,27 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netdb.h>
+#include <vector>
+#include <sstream>
+
+
+std::vector<std::string> split_string(const std::string &str, const std::string &delimiter) {
+    std::vector<std::string> result;
+    std::stringstream ss(str);
+    std::string item;
+
+    while (std::getline(ss, item, *delimiter.begin())) {
+        result.push_back(item);
+    }
+
+    return result;
+}
+
+std::string get_path(std::string request) {
+  std::vector<std::string> toks = split_string(request, "\r\n");
+  std::vector<std::string> path_toks = split_string(toks[0], " ");
+  return path_toks[1];
+}
 
 int main(int argc, char **argv) {
   // Flush after every std::cout / std::cerr
@@ -61,17 +82,20 @@ int main(int argc, char **argv) {
 
   std::cout << "Client connected\n";
 
-  char msg[2048] = {};
+  char buff[2048];
   // use ssize_t if return value can be negative (i.e. error value)
-  ssize_t t = recvfrom(client_fd, msg, sizeof(msg) - 1, 0, (struct sockaddr *) &client_addr, (socklen_t *) &client_addr_len);
+  // reading from file descriptor here, another way is just int ret = read(client_fd, buffer, sizeof(buffer));
+  ssize_t t = recvfrom(client_fd, buff, sizeof(buff) - 1, 0, (struct sockaddr *) &client_addr, (socklen_t *) &client_addr_len);
   if (t < 0){
     std::cerr << "listen failed\n";
     return 1;
   }
 
-  std::string msg_str(msg);
+  std::string request(buff);
   // std::cout << "Received message from client: " << msg_str << "\n";
-  std::string response = msg_str.starts_with("GET / HTTP/1.1\r\n") ? "HTTP/1.1 200 OK\r\n\r\n" : "HTTP/1.1 404 Not Found\r\n\r\n" ;
+  std::string path = get_path(request);
+  std::cout << "Path: " << path << "\n";
+  std::string response = request.starts_with("GET / HTTP/1.1\r\n") ? "HTTP/1.1 200 OK\r\n\r\n" : "HTTP/1.1 404 Not Found\r\n\r\n" ;
 
   // std::string message = "HTTP/1.1 200 OK\r\n\r\n";
   send(client_fd , response.c_str() , response.length(), 0);
