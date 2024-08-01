@@ -35,14 +35,50 @@ std::map<std::string, std::string> get_headers(std::string request) {
   std::vector<std::string> toks = split_string(request, "\r\n");
   for (int i = 1; i < toks.size(); i++) {
     std::cout << toks[i] << "\n";
-    // size_t pos = toks[i].find(":");
-    // if (pos == std::string::npos) {
-    //   break;
-    // }
-    // std::vector<std::string> header_toks = split_string(toks[i], ": ");
-    // headers[header_toks[0]] = header_toks[1];
+    size_t pos = toks[i].find(":");
+    if (pos == std::string::npos) {
+      break;
+    }
+    std::vector<std::string> header_toks = split_string(toks[i], ": ");
+    std::cout << header_toks[0] << " " << header_toks[1] << "\n";
+    headers[header_toks[0]] = header_toks[1];
   }
   return headers;
+}
+
+struct HTTPRequest {
+    std::string method;
+    std::string path;
+    std::string version;
+    std::map<std::string, std::string> headers;
+    std::string body;
+};
+
+HTTPRequest parse_request(std::string request) {
+    HTTPRequest req;
+    std::stringstream ss(request);
+    std::string line;
+    std::getline(ss, line);
+    std::istringstream line_ss(line);
+    line_ss >> req.method >> req.path >> req.version;
+    while (std::getline(ss, line) && !line.empty()) {
+        size_t pos = line.find(":");
+        if (pos != std::string::npos) {
+            std::string header_name = line.substr(0, pos);
+            std::string header_value = line.substr(pos + 2);
+            header_value.erase(header_value.end() - 1);
+            req.headers[header_name] = header_value;
+        }
+    }
+    std::stringstream body_ss;
+    std::getline(ss, line);
+    body_ss << line;
+    while (std::getline(ss, line)) {
+        body_ss << line << "\n";
+        body_ss << "\n" << line;
+    }
+    req.body = body_ss.str();
+    return req;
 }
 
 int main(int argc, char **argv) {
@@ -107,27 +143,40 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  std::string request(buff);
-  // std::cout << "Received message from client: " << msg_str << "\n";
-  std::string path = get_path(request);
-  std::map<std::string, std::string> headers = get_headers(request);
-  std::cout << headers["User-Agent"] << "\n";
-  // std::cout << "Path: " << path << "\n";
-  // std::string response = request.starts_with("GET / HTTP/1.1\r\n") ? "HTTP/1.1 200 OK\r\n\r\n" : "HTTP/1.1 404 Not Found\r\n\r\n" ;
+  std::string r(buff);
+  HTTPRequest request = parse_request(r);
 
-  std::vector<std::string> split_paths = split_string(path, "/");
   std::string response;
-  if (path == "/") {
-    response = "HTTP/1.1 200 OK\r\n\r\n";
-  } else if (split_paths[1] == "echo") {
-    response = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: " + std::to_string(split_paths[2].length()) + "\r\n\r\n" + split_paths[2];
-  } else if (split_paths[1] == "user-agent") {
-    response = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: " + std::to_string(headers["User-Agent"].length()) + "\r\n\r\n" + headers["User-Agent"];
+  if (request.method == "GET") {
+    if (request.path == "/") {
+      response = "HTTP/1.1 200 OK\r\n\r\n";
+    } else if (request.path == "/user-agent") {
+      std::string body = request.headers["User-Agent"];
+      response = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: " + std::to_string(body.length()) + "\r\n\r\n" + body;
+    } else if (request.path.substr(0, 6) == "/echo/") {
+      std::string subStr = request.path.substr(6);
+      response = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: " + std::to_string(subStr.length()) + "\r\n\r\n" + subStr;
+    } else if (request.path.substr(0, 7) == "/files/") {
+        // std::string directory = ".";
+        // std::string filename = request.path.substr(7);
+        // std::ifstream file(directory + "/" + filename);
+        // if (!file) {
+        //     HTTPResponse response = { "HTTP/1.1 404 Not Found", "text/plain", {}, "Not Found" };
+        //     write_response(client_fd, response);
+        //     return;
+        // }
+        // std::stringstream body;
+        // body << file.rdbuf();
+        // HTTPResponse response = { "HTTP/1.1 200 OK", "application/octet-stream", { {"Content-Length", std::to_string(body.str().length())} }, body.str() };
+        // write_response(client_fd, response);
+    } else {
+      response = "HTTP/1.1 404 Not Found\r\n\r\n";
+    }
   } else {
-    response = "HTTP/1.1 404 Not Found\r\n\r\n";
+      // HTTPResponse response = { "HTTP/1.1 405 Method Not Allowed", "text/plain", {}, "Method Not Allowed" };
+      // write_response(client_fd, response);
   }
 
-  // std::string message = "HTTP/1.1 200 OK\r\n\r\n";
   send(client_fd , response.c_str() , response.length(), 0);
   
   close(server_fd);
