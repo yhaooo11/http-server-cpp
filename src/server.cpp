@@ -61,8 +61,20 @@ int main(int argc, char **argv) {
 
   std::cout << "Client connected\n";
 
-  std::string message = "HTTP/1.1 200 OK\r\n\r\n";
-  send(client_fd , message.c_str() , message.length(), 0);
+  char msg[2048] = {};
+  // use ssize_t if return value can be negative (i.e. error value)
+  ssize_t t = recvfrom(client_fd, msg, sizeof(msg) - 1, 0, (struct sockaddr *) &client_addr, (socklen_t *) &client_addr_len);
+  if (t < 0){
+    std::cerr << "listen failed\n";
+    return 1;
+  }
+
+  std::string msg_str(msg);
+  // std::cout << "Received message from client: " << msg_str << "\n";
+  std::string response = msg_str.starts_with("GET / HTTP/1.1\r\n") ? "HTTP/1.1 200 OK\r\n\r\n" : "HTTP/1.1 404 Not Found\r\n\r\n" ;
+
+  // std::string message = "HTTP/1.1 200 OK\r\n\r\n";
+  send(client_fd , response.c_str() , response.length(), 0);
   
   close(server_fd);
 
